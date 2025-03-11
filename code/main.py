@@ -21,12 +21,13 @@ Lines = [{'id': 0,  'From': 0,  'To': 1,  'R': 0.161*4/Zbase, 'X': 0.109*4/Zbase
 # Prosumers
 Pros = [{'id': 0, 'Node': 1, 'P': -2e6/Sbase, 'Q': -1.5e6/Sbase},
         {'id': 1, 'Node': 2, 'P': -1.6e6/Sbase, 'Q': -1.2e6/Sbase},
-        {'id': 2, 'Node': 3, 'P': -6.4e6/Sbase, 'Q': -2.4e6/Sbase},]
+        {'id': 2, 'Node': 3, 'P': -6.4e6/Sbase, 'Q': -2.4e6/Sbase}]
 
 # Constructing network and solving power flow
 net = lib.grid(Nodes, Lines, Pros)
 
 sol = net.solve_pf()
+
 U = net.compute_voltages()
 I_lines = net.compute_line_currents()
 I_nodes = net.compute_node_currents()
@@ -34,4 +35,14 @@ check = net.check()
 
 if all(check):
     print('The solution is consistent')
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 

@@ -77,6 +77,12 @@ class grid:
             rest.append(line.ineq(x))          
         return rest
     
+    def ineq_jac(self, X):
+        jacobian = []
+        for line in self.lines:
+            jacobian.append(line.ineq_jac(X))
+        return np.array(jacobian)
+    
     def compute_line_currents(self):
         current = []
         for line in self.lines:
@@ -106,6 +112,21 @@ class grid:
                 check.append(total_intens) 
         return check       
                 
+    def solve_iterative(self):       
+        self.obtain_A()
+        self.obtain_B()
+        self.obtain_f() 
+        
+        # Algoritmo iterativo: Descent-primal ascent-dual
+        x = self.x # x(k=0)
+        A = self.A
+        b = self.B
+        f = self.f
+        self.ineq(x) # g(x)
+        sol = 0
+        ##################################################
+        
+        return sol
         
     
     def solve_pf(self):        
@@ -184,6 +205,30 @@ class line:
         self.Skt = X[self.index[1]]
         ineq = self.Ckt**2 + self.Skt**2 - Ckk * Ctt
         return ineq
+     
+    def ineq_jac(self, X):
+        jac = np.zeros(len(X))  # Inicializar con ceros
+        
+        # Obtener los índices
+        idx_Ckk = self.nodes[0].index if not self.nodes[0].slack else None
+        idx_Ctt = self.nodes[1].index
+        idx_Ckt = self.index[0]
+        idx_Skt = self.index[1]
+        
+        # Obtener los valores
+        Ckk = 1 if self.nodes[0].slack else X[idx_Ckk]
+        Ctt = X[idx_Ctt]
+        Ckt = X[idx_Ckt]
+        Skt = X[idx_Skt]
+        
+        # Calcular derivadas parciales
+        jac[idx_Ckt] = 2 * Ckt
+        jac[idx_Skt] = 2 * Skt
+        if idx_Ckk is not None:
+            jac[idx_Ckk] = -Ctt
+        jac[idx_Ctt] = -Ckk
+        
+        return jac   
      
     def current(self):
         self.I = (self.nodes[0].U - self.nodes[1].U) / self.Z   
