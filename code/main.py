@@ -37,12 +37,7 @@ if all(check):
     print('The solution is consistent')
     
     
-    
-    
-    
-    
-    
-    
-    
-    
 
+    
+    
+    

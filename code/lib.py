@@ -142,6 +142,8 @@ class grid:
        
         for index, node in enumerate(self.nodes[1:]):
             node.Ckk = sol.x[index]  
+            
+        self.x = sol.x
         return sol
         
     
