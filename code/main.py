@@ -26,7 +26,7 @@ Pros = [{'id': 0, 'Node': 1, 'P': -2e6/Sbase, 'Q': -1.5e6/Sbase},
 # Constructing network and solving power flow
 net = lib.grid(Nodes, Lines, Pros)
 
-sol = net.solve_pf()
+sol = net.solve_iterative()
 
 U = net.compute_voltages()
 I_lines = net.compute_line_currents()

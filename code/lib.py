@@ -111,23 +111,7 @@ class grid:
             else: 
                 check.append(total_intens) 
         return check       
-                
-    def solve_iterative(self):       
-        self.obtain_A()
-        self.obtain_B()
-        self.obtain_f() 
-        
-        # Algoritmo iterativo: Descent-primal ascent-dual
-        x = self.x # x(k=0)
-        A = self.A
-        b = self.B
-        f = self.f
-        self.ineq(x) # g(x)
-        sol = 0
-        ##################################################
-        
-        return sol
-        
+                      
     
     def solve_pf(self):        
         self.obtain_A()
