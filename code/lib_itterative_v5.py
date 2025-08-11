@@ -56,6 +56,7 @@ class grid:
             n_aux3 += 1       
         self.x = np.zeros(self.x_size)
         self.x[:self.n - 1] = 1
+        self.x[self.n-1:self.n+self.m- 1] = 1
         
     def obtain_A(self):        
         matrizA = np.zeros(((2*self.n)-2, (self.n+2*self.m)-1), dtype=float)        
@@ -139,7 +140,8 @@ class grid:
         s = np.zeros(len(self.ineq(x)))        # Variables de holgura (para desigualdades)
         lambda_eq = np.zeros(self.A.shape[0])  # Multiplicadores para igualdades
         mu_ineq = np.zeros(len(self.ineq(x)))  # Multiplicadores para desigualdades
-           
+        g_x = np.array(self.ineq(x))           # Evaluar desigualdades g(x)
+        
         # --- Guardamos histórico para análisis ---
         
         hist_dual = []
@@ -151,74 +153,58 @@ class grid:
         for k in range(max_iter):
 
             
-            # --- Actualización de variables de holgura ---
-            
-            g_x = np.array(self.ineq(x))  # Evaluar desigualdades g(x)
+            # --- Actualización de variables de holgura ---            
             s = -mu_ineq / rho - g_x      # Solución analítica de ∂L/∂s = 0
             s = np.maximum(s, 0)          # Imponer condición s >= 0
            
-            # --- Actualización de variables primales x ---
+            # --- Actualización de variables primales x ---            
+            grad_x = (self.f.flatten() + # funcion objetivo
+                      self.A.T @ lambda_eq + # término lambda*(Ax-b)
+                      rho * self.A.T @ (self.A @ x - self.B) + # término (rho/2)*||Ax-b||_2^2
+                      self.ineq_jac(x).T @ mu_ineq + # término mu*(g(x) + s)
+                      rho * self.ineq_jac(x).T @ (g_x + s)) # término (rho/2)*||g(x) + s||_2^2    
+            # print(grad_x)                  
             
-            # Gradiente del Lagrangiano aumentado respecto a x
-            # grad_x = ∇f + Aᵀλ + Jᵀμ + ρAᵀ(Ax−B) + ρJᵀ(g(x)+s)
-            
-            grad_x = (self.f.flatten() +
-                      self.A.T @ lambda_eq +
-                      self.ineq_jac(x).T @ mu_ineq +
-                      rho * self.A.T @ (self.A @ x - self.B) +
-                      rho * self.ineq_jac(x).T @ (g_x + s))
-            
-            # --- COMPROBACIÓN DE NaN / Inf en x o grad_x ---
-            
-            if (np.isnan(x).any() or np.isinf(x).any() or
-                np.isnan(grad_x).any() or np.isinf(grad_x).any()):
-                print(f" Interrupción en iteración {k}: NaN o Inf detectado en x o gradiente.")
-                break
-            
-            # --- Paso de descenso primal ---
-            
+            # --- Paso de descenso primal ---            
             x = x - alpha * grad_x
+            g_x = np.array(self.ineq(x))  # Evaluar desigualdades g(x)
             
-            # --- Actualización de variables duales ---
-            
+            # --- Actualización de variables duales ---            
             lambda_eq = lambda_eq + rho * (self.A @ x - self.B)
             mu_ineq = mu_ineq + rho * (g_x + s)
-            mu_ineq = np.maximum(mu_ineq, 0)      # Mantener μ >= 0
-               
-           # --- Criterio de parada ---
-           
+            mu_ineq = np.maximum(mu_ineq, 0)    
+            
+            # --- Criterio de parada ---           
             res_eq = np.linalg.norm(self.A @ x - self.B, np.inf)
             res_ineq = np.linalg.norm(g_x + s, np.inf)
-            res_dual = np.linalg.norm(grad_x, np.inf)
-            
-            # --- COMPROBACIÓN DE NaN / Inf en residuos ---
-            
-            if any(np.isnan(v) or np.isinf(v) for v in [res_eq, res_ineq, res_dual]):
-                print(f" Interrupción en iteración {k}: NaN o Inf detectado en residuos.")
-                break
-    
-            # --- Guardar histórico de residuos ---
-            
+            print(f'Iteration {k}: {res_eq:.5f}, {res_ineq:.5f}')            
+              
+            # --- Guardar histórico de residuos ---            
             hist_eq.append(res_eq)
             hist_ineq.append(res_ineq)
-            hist_dual.append(res_dual)
 
-            # --- CRITERIO DE CONVERGENCIA: Residuos menores que tolerancia ---
-            
-            if res_eq < tol and res_ineq < tol and res_dual < tol:
+            # --- CRITERIO DE CONVERGENCIA: Residuos menores que tolerancia ---            
+            if res_eq < tol and res_ineq < tol:
                 if verbose:
-                    print(f"✅ Convergencia en iteración {k}")
+                    print(f"Convergencia en iteración {k}")
                 self.x = x
-                return True, x, k, (res_eq, res_ineq, res_dual), hist_eq, hist_ineq, hist_dual
+                
+                for index, node in enumerate(self.nodes[1:]):
+                    node.Ckk = x[index]  
+                    
+                return True, x, k, (res_eq, res_ineq), hist_eq, hist_ineq, hist_dual
 
     
         if verbose:
-            print("❌ No se alcanzó convergencia")
+            print("No se alcanzó convergencia")
     
         self.x = x
-        return False, x, max_iter, (res_eq, res_ineq, res_dual), hist_eq, hist_ineq, hist_dual  
+        
+        for index, node in enumerate(self.nodes[1:]):
+            node.Ckk = x[index]  
+            
+        return False, x, max_iter, (res_eq, res_ineq), hist_eq, hist_ineq, hist_dual  
     
-           ################################## 
         
         
     

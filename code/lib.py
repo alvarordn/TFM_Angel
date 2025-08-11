@@ -116,7 +116,7 @@ class grid:
     def solve_pf(self):        
         self.obtain_A()
         self.obtain_B()
-        self.obtain_f()        
+        self.obtain_f()    
         
         lc = LinearConstraint(self.A, self.B, self.B)
         nlc = NonlinearConstraint(self.ineq, -np.inf, 0)
@@ -130,6 +130,69 @@ class grid:
         self.x = sol.x
         return sol
         
+    def solve_iterative(self, alpha, rho, max_iter, tol, verbose=False):     
+        self.obtain_A()   
+        self.obtain_B()   
+        self.obtain_f()   
+        
+        self.f = np.diag(self.f)
+            
+        x = self.x.copy()                      
+        s = np.zeros(len(self.ineq(x)))       
+        lambda_eq = np.zeros(self.A.shape[0])  
+        mu_ineq = np.zeros(len(self.ineq(x)))  
+        g_x = np.array(self.ineq(x))           
+        
+            
+        for k in range(max_iter):
+            
+            # --- Actualización de variables de holgura ---            
+            s = -mu_ineq / rho - g_x      
+            s = np.maximum(s, 0)          
+           
+            # --- Actualización de variables primales x ---            
+            grad_x = (2*self.f*x + 
+                      # self.f.flatten() + # funcion objetivo
+                      self.A.T @ lambda_eq + # término lambda*(Ax-b)
+                      rho * self.A.T @ (self.A @ x - self.B) + # término (rho/2)*||Ax-b||_2^2
+                      self.ineq_jac(x).T @ mu_ineq + # término mu*(g(x) + s)
+                      rho * self.ineq_jac(x).T @ (g_x + s)) # término (rho/2)*||g(x) + s||_2^2          
+            
+            # --- Paso de descenso primal ---            
+            x = x - alpha * grad_x
+            g_x = np.array(self.ineq(x)) 
+            
+            # --- Actualización de variables duales ---            
+            lambda_eq = lambda_eq + rho * (self.A @ x - self.B)
+            mu_ineq = mu_ineq + rho * (g_x + s)
+            mu_ineq = np.maximum(mu_ineq, 0)    
+            
+            # --- Criterio de parada ---           
+            res_eq = np.linalg.norm(self.A @ x - self.B, np.inf)
+            res_ineq = np.linalg.norm(g_x + s, np.inf)
+            print(f'Iteration {k}: {res_eq:.5f}, {res_ineq:.5f}')            
+              
+            # --- CRITERIO DE CONVERGENCIA: Residuos menores que tolerancia ---            
+            if res_eq < tol and res_ineq < tol:
+                if verbose:
+                    print(f"Convergencia en iteración {k}")
+                self.x = x
+                
+                for index, node in enumerate(self.nodes[1:]):
+                    node.Ckk = x[index]  
+                    
+                return
+                                  
+        if verbose:
+            print("No se alcanzó convergencia")
+    
+        self.x = x
+        
+        for index, node in enumerate(self.nodes[1:]):
+            node.Ckk = x[index]  
+            
+        return
+            
     
     def obtain_B(self):        
         matrizB = np.zeros(2*self.n-2, dtype=float)        
