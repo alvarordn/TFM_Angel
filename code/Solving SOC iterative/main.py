@@ -26,9 +26,9 @@ Pros = [{'id': 0, 'Node': 1, 'P': -2e6/Sbase, 'Q': -1.5e6/Sbase},
 print('\n\n\n')
 print('------------- ITERATIVE -------------')
 net = lib.grid(Nodes, Lines, Pros)
-net.solve_iterative(rho=1000,
+net.solve_iterative(rho=100,
                     max_iter = 5000, 
-                    tol = 1e-3)
+                    tol = 1e-2)
 print('Linear constraints: ')
 res_eq = net.A @ net.x - net.B
 for item in res_eq: 
