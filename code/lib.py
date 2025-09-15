@@ -48,7 +48,7 @@ class grid:
             n_aux += 1
             n_aux3 += 1       
         self.x = np.zeros(self.x_size)
-        self.x[:self.n - 1] = 1
+        self.x[:self.m + self.n - 1] = 1
         
     def obtain_A(self):        
         matrizA = np.zeros(((2*self.n)-2, (self.n+2*self.m)-1), dtype=float)        
@@ -129,70 +129,54 @@ class grid:
             
         self.x = sol.x
         return sol
-        
-    def solve_iterative(self, alpha, rho, max_iter, tol, verbose=False):     
+    def solve_iterative(self, alpha, rho_lc, rho_nlc, max_iter, tol, verbose=False):     
         self.obtain_A()   
         self.obtain_B()   
         self.obtain_f()   
-        
-        self.f = np.diag(self.f)
-            
+    
         x = self.x.copy()                      
-        s = np.zeros(len(self.ineq(x)))       
         lambda_eq = np.zeros(self.A.shape[0])  
         mu_ineq = np.zeros(len(self.ineq(x)))  
-        g_x = np.array(self.ineq(x))           
-        
-            
+    
         for k in range(max_iter):
-            
-            # --- Actualización de variables de holgura ---            
-            s = -mu_ineq / rho - g_x      
-            s = np.maximum(s, 0)          
-           
-            # --- Actualización de variables primales x ---            
-            grad_x = (2*self.f*x + 
-                      # self.f.flatten() + # funcion objetivo
-                      self.A.T @ lambda_eq + # término lambda*(Ax-b)
-                      rho * self.A.T @ (self.A @ x - self.B) + # término (rho/2)*||Ax-b||_2^2
-                      self.ineq_jac(x).T @ mu_ineq + # término mu*(g(x) + s)
-                      rho * self.ineq_jac(x).T @ (g_x + s)) # término (rho/2)*||g(x) + s||_2^2          
-            
-            # --- Paso de descenso primal ---            
-            x = x - alpha * grad_x
-            g_x = np.array(self.ineq(x)) 
-            
-            # --- Actualización de variables duales ---            
-            lambda_eq = lambda_eq + rho * (self.A @ x - self.B)
-            mu_ineq = mu_ineq + rho * (g_x + s)
-            mu_ineq = np.maximum(mu_ineq, 0)    
-            
-            # --- Criterio de parada ---           
+            g_x = np.array(self.ineq(x))
+            J_g = self.ineq_jac(x)  # Jacobiano de g(x)
+    
+            # --- Gradiente del Lagrangiano aumentado ---
+            grad_x = (self.f + 
+                      self.A.T @ lambda_eq + 
+                      rho_lc * self.A.T @ (self.A @ x - self.B) + 
+                      J_g.T @ mu_ineq + 
+                      rho_nlc * J_g.T @ g_x)
+    
+            # --- Paso de descenso primal ---
+            x = x - alpha * grad_x[0]
+    
+            # --- Actualización de variables duales ---
+            lambda_eq = lambda_eq + rho_lc * (self.A @ x - self.B)
+            mu_ineq = mu_ineq + rho_nlc * g_x
+            mu_ineq = np.maximum(mu_ineq, 0)  # Dual no negativo
+    
+            # --- Criterio de parada ---
             res_eq = np.linalg.norm(self.A @ x - self.B, np.inf)
-            res_ineq = np.linalg.norm(g_x + s, np.inf)
-            print(f'Iteration {k}: {res_eq:.5f}, {res_ineq:.5f}')            
-              
-            # --- CRITERIO DE CONVERGENCIA: Residuos menores que tolerancia ---            
+            res_ineq_violation = np.maximum(g_x, 0)  # solo violaciones
+            res_ineq = np.linalg.norm(res_ineq_violation, np.inf)
+    
+            if verbose:
+                print(f'Iteration {k}: res_eq = {res_eq:.5f}, res_ineq = {res_ineq:.5f}')
+    
             if res_eq < tol and res_ineq < tol:
                 if verbose:
                     print(f"Convergencia en iteración {k}")
-                self.x = x
-                
-                for index, node in enumerate(self.nodes[1:]):
-                    node.Ckk = x[index]  
-                    
-                return
-                                  
-        if verbose:
-            print("No se alcanzó convergencia")
+                break
+        else:
+            if verbose:
+                print("No se alcanzó convergencia")
     
+        # Guardar resultados
         self.x = x
-        
         for index, node in enumerate(self.nodes[1:]):
-            node.Ckk = x[index]  
-            
-        return
-            
+            node.Ckk = x[index]
     
     def obtain_B(self):        
         matrizB = np.zeros(2*self.n-2, dtype=float)        

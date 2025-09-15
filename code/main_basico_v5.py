@@ -28,31 +28,35 @@ net_scipy.solve_pf()
 U_scipy = net_scipy.compute_voltages()
 v_ref = np.array([abs(u) for u in U_scipy])
 
+print('\n\n\n')
 print('------------- SCIPY -------------')
-print(net_scipy.x)
-print(net_scipy.check())
-print(net_scipy.A @ net_scipy.x - net_scipy.B)
-print(net_scipy.ineq(net_scipy.x))
+print(f'State: {net_scipy.x}')
+print(f'Residuals: {net_scipy.check()}')
+print(f'Linear constraints: {net_scipy.A @ net_scipy.x - net_scipy.B}')
+print(f'Conic constraints: {net_scipy.ineq(net_scipy.x)}')
 # print('Tolerancia a considerar...')
 # print(np.linalg.norm(net_scipy.A @ net_scipy.x - net_scipy.B, np.inf))
 
 
 # Resolvemos con algorimto iterativo
+print('\n\n\n')
 print('------------- ITERATIVE -------------')
 net = lib.grid(Nodes, Lines, Pros)
 # net.x = net_scipy.x
 net.solve_iterative(
-    alpha=1e-8,
-    rho=0.1,
+    alpha = 1e-3,
+    rho_lc=0.0001,
+    rho_nlc=0.0001,
     max_iter=20,
     tol=1e-5,
     verbose=True
 )
 
     
-U_iterative = net.compute_voltages()
+# U_iterative = net.compute_voltages()
 
-print(net.x)
-print(net.check())
+# print(net.x)
+# print(net.check())
 # print(net.A @ net.x - net.B)
 # print(net.ineq(net.x))
+
